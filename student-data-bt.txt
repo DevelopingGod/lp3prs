@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+/**
+ * @title StudentData
+ * @dev A contract to store and manage student records using a Struct, 
+ * a dynamic array, manual roll number input, and now includes both
+ * a receive() and a payable fallback() function for Ether handling.
+ */
+contract StudentData {
+
+    // --- 1. STRUCTURES: Define the data structure for a student ---
+    struct Student {
+        uint rollNo;
+        string name;
+        uint age;
+        address studentAddress; 
+    }
+
+    // --- 2. ARRAYS & MAPPINGS (State Variables) ---
+    
+    Student[] public students;
+    mapping(uint => uint) private rollNoToIndex; 
+    mapping (uint => bool) private rollNumberExists; 
+    
+    // --- EVENTS (For custom console logging) ---
+
+    event StudentAdded(uint indexed rollNo, string name, address indexed creator);
+    event EtherReceived(address indexed sender, uint amount, string reason);
+    event FallbackCalled(address indexed sender, uint amount, bytes data);
+
+    // --- ETH HANDLER FUNCTIONS (Resolves the Warning) ---
+
+    /**
+     * @dev The special receive function.
+     * It is executed when the contract receives ETH with NO CALL DATA.
+     * It MUST be external and MUST be payable. Gas cost is typically lower than fallback.
+     */
+    receive() external payable {
+        // Log the event for incoming Ether with no function call
+        emit EtherReceived(msg.sender, msg.value, "Simple ETH transfer (receive)");
+    }
+
+    /**
+     * @dev The special Fallback function. 
+     * It is executed when the contract receives ETH with call data (and no matching function) 
+     * OR when a function is called that doesn't exist.
+     * It MUST be external and MUST be payable.
+     */
+    fallback() external payable {
+        // Log the event that the fallback was called.
+        emit FallbackCalled(msg.sender, msg.value, msg.data);
+    }
+
+    // --- CRUD FUNCTIONS ---
+
+    /**
+     * @dev Creates a new student record and adds it to the dynamic array.
+     * @param _rollNo The unique roll number for the student.
+     * @param _name The student's name.
+     * @param _age The student's age.
+     */
+    function addStudent(uint _rollNo, string memory _name, uint _age) public {
+        
+        // Validation checks
+        require(_rollNo > 0, "Roll number must be greater than zero.");
+        require(!rollNumberExists[_rollNo], "Roll number already exists.");
+        require(bytes(_name).length > 0, "Name cannot be empty.");
+        
+        // Add the new student struct to the dynamic array
+        students.push(Student(_rollNo, _name, _age, msg.sender));
+        
+        // Store index and mark roll number as existing
+        uint newIndex = students.length - 1; 
+        rollNoToIndex[_rollNo] = newIndex + 1; 
+        rollNumberExists[_rollNo] = true; 
+
+        // Emit a custom log to the console
+        emit StudentAdded(_rollNo, _name, msg.sender);
+    }
+    
+    /**
+     * @dev Retrieves a student's data by their roll number.
+     * @param _rollNo The roll number to look up.
+     * @return rollNo, name, age, and address.
+     */
+    function getStudent(uint _rollNo) 
+        public 
+        view 
+        returns (uint, string memory, uint, address) 
+    {
+        uint storageIndexPlusOne = rollNoToIndex[_rollNo];
+        
+        // Check if the roll number exists
+        require(storageIndexPlusOne > 0, "Student not found.");
+
+        uint storageIndex = storageIndexPlusOne - 1;
+        
+        Student storage s = students[storageIndex];
+        return (s.rollNo, s.name, s.age, s.studentAddress);
+    }
+}

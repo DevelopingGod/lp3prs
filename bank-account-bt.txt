@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+// 💡 Import the Remix console library
+import "hardhat/console.sol";
+
+contract Bank {
+    // Mapping to store balances of each account
+    mapping(address => uint256) private balances;
+
+    // Events for logging deposits and withdrawals
+    event Deposit(address indexed account, uint256 amount);
+    event Withdrawal(address indexed account, uint256 amount);
+
+    // Deposit money into the bank
+    function deposit() public payable {
+        require(msg.value > 0, "Deposit must be greater than 0");
+        balances[msg.sender] += msg.value;
+        emit Deposit(msg.sender, msg.value);
+        // 💡 Emit the custom log
+        console.log("Starting deposit function...");
+        console.log("Deposited: ", msg.value);
+    }
+
+    // Withdraw money from the bank
+    function withdraw(uint256 amount) public {
+        require(amount <= balances[msg.sender], "Insufficient balance");
+        balances[msg.sender] -= amount;           // Update balance first
+        payable(msg.sender).transfer(amount);    // Transfer ETH
+        emit Withdrawal(msg.sender, amount);
+        console.log("Withdrawed: ", amount);
+    }
+
+    // Show balance of the sender
+    function getBalance() public view returns (uint256) {
+        return balances[msg.sender];
+    }
+
+    // Optional: check contract's total ETH
+    function contractBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+}
